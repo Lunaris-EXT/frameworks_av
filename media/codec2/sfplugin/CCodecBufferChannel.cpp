@@ -1338,15 +1338,6 @@ status_t CCodecBufferChannel::queueSecureInputBuffer(
     return queueInputBufferInternal(buffer, block, c2Infos, bufferSize);
 }
 
-void CCodecBufferChannel::queueDummyWork() {
-    std::unique_ptr<C2Work> work(new C2Work);
-    // WA: signal a empty work to HAL to trigger specific event, but totally drop the work
-    work->input.flags = C2FrameData::FLAG_DROP_FRAME;
-    std::list<std::unique_ptr<C2Work>> items;
-    items.push_back(std::move(work));
-    (void)mComponent->queue(&items);
-}
-
 status_t CCodecBufferChannel::queueSecureInputBuffers(
         const sp<MediaCodecBuffer> &buffer,
         bool secure,
