@@ -55,8 +55,10 @@ import android.media.audio.common.AudioLatencyMode;
 import android.media.audio.common.AudioMMapPolicyInfo;
 import android.media.audio.common.AudioMMapPolicyType;
 import android.media.audio.common.AudioMode;
+import android.media.audio.common.AudioPortConfig;
 import android.media.audio.common.AudioStreamType;
 import android.media.audio.common.AudioUuid;
+import android.media.audio.common.FlushFromFrameSupport;
 
 /**
  * @hide
@@ -318,6 +320,11 @@ interface IAudioFlingerService {
      * Test API
      */
      void resetReferencesForTest();
+
+    /**
+     * Query how `flushFromFrame` is supported with the given port config on the given HAL module.
+     */
+    FlushFromFrameSupport getFlushFromFrameSupport(int module, in AudioPortConfig config);
 
     // When adding a new method, please review and update
     // IAudioFlinger.h AudioFlingerServerAdapter::Delegate::TransactionCode

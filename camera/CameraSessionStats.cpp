@@ -138,6 +138,18 @@ status_t CameraStreamStats::readFromParcel(const android::Parcel* parcel) {
         return err;
     }
 
+    int currentSurfaceId = 0;
+    if ((err = parcel->readInt32(&currentSurfaceId)) != OK) {
+        ALOGE("%s: Failed to read current surface id from parcel", __FUNCTION__);
+        return err;
+    }
+
+    int32_t multiResMode = 0;
+    if ((err = parcel->readInt32(&multiResMode)) != OK) {
+        ALOGE("%s: Failed to read multiResolution mode from parcel", __FUNCTION__);
+        return err;
+    }
+
     mWidth = width;
     mHeight = height;
     mFormat = format;
@@ -147,6 +159,7 @@ status_t CameraStreamStats::readFromParcel(const android::Parcel* parcel) {
     mRequestCount = requestCount;
     mErrorCount = errorCount;
     mStartLatencyMs = startLatencyMs;
+    mCurrentSurfaceId = currentSurfaceId;
     mMaxHalBuffers = maxHalBuffers;
     mMaxAppBuffers = maxAppBuffers;
     mHistogramType = histogramType;
@@ -155,6 +168,7 @@ status_t CameraStreamStats::readFromParcel(const android::Parcel* parcel) {
     mDynamicRangeProfile = dynamicRangeProfile;
     mStreamUseCase = streamUseCase;
     mColorSpace = colorSpace;
+    mMultiResMode = multiResMode;
 
     return OK;
 }
@@ -252,6 +266,16 @@ status_t CameraStreamStats::writeToParcel(android::Parcel* parcel) const {
         return err;
     }
 
+    if ((err = parcel->writeInt32(mCurrentSurfaceId)) != OK) {
+        ALOGE("%s: Failed to write stream current surface id!", __FUNCTION__);
+        return err;
+    }
+
+    if ((err = parcel->writeInt32(mMultiResMode)) != OK) {
+        ALOGE("%s: failed to write MultiResolution mode!", __FUNCTION__);
+        return err;
+    }
+
     return OK;
 }
 
@@ -276,7 +300,9 @@ CameraSessionStats::CameraSessionStats() :
         mNewCameraState(CAMERA_STATE_CLOSED),
         mApiLevel(0),
         mIsNdk(false),
+        mSharedMode(false),
         mLatencyMs(-1),
+        mInputFormat(-1),
         mLogId(0),
         mMaxPreviewFps(0),
         mSessionType(0),
@@ -286,27 +312,31 @@ CameraSessionStats::CameraSessionStats() :
         mDeviceError(false),
         mVideoStabilizationMode(-1),
         mSessionIndex(0),
+        mErrorState(0),
         mCameraExtensionSessionStats() {}
 
 CameraSessionStats::CameraSessionStats(const std::string& cameraId,
         int facing, int newCameraState, const std::string& clientName,
-        int apiLevel, bool isNdk, int32_t latencyMs, int64_t logId) :
+        int apiLevel, bool isNdk, bool sharedMode, int32_t latencyMs, int64_t logId) :
                 mCameraId(cameraId),
                 mFacing(facing),
                 mNewCameraState(newCameraState),
                 mClientName(clientName),
                 mApiLevel(apiLevel),
                 mIsNdk(isNdk),
+                mSharedMode(sharedMode),
                 mLatencyMs(latencyMs),
+                mInputFormat(-1),
                 mLogId(logId),
                 mMaxPreviewFps(0),
                 mSessionType(0),
                 mInternalReconfigure(0),
                 mRequestCount(0),
                 mResultErrorCount(0),
-                mDeviceError(0),
+                mDeviceError(false),
                 mVideoStabilizationMode(-1),
                 mSessionIndex(0),
+                mErrorState(0),
                 mCameraExtensionSessionStats() {}
 
 status_t CameraSessionStats::readFromParcel(const android::Parcel* parcel) {
@@ -356,6 +386,12 @@ status_t CameraSessionStats::readFromParcel(const android::Parcel* parcel) {
     int32_t latencyMs;
     if ((err = parcel->readInt32(&latencyMs)) != OK) {
         ALOGE("%s: Failed to read latencyMs from parcel", __FUNCTION__);
+        return err;
+    }
+
+    int32_t inputFormat;
+    if ((err = parcel->readInt32(&inputFormat)) != OK) {
+        ALOGE("%s: Failed to read inputFormat from parcel", __FUNCTION__);
         return err;
     }
 
@@ -437,6 +473,12 @@ status_t CameraSessionStats::readFromParcel(const android::Parcel* parcel) {
         return err;
     }
 
+    int32_t errorState = 0;
+    if ((err = parcel->readInt32(&errorState)) != OK) {
+        ALOGE("%s: Failed to read error state from parcel", __FUNCTION__);
+        return err;
+    }
+
     CameraExtensionSessionStats extStats{};
     if ((err = extStats.readFromParcel(parcel)) != OK) {
         ALOGE("%s: Failed to read extension session stats from parcel", __FUNCTION__);
@@ -453,13 +495,21 @@ status_t CameraSessionStats::readFromParcel(const android::Parcel* parcel) {
         return err;
     }
 
+    bool sharedMode;
+    if ((err = parcel->readBool(&sharedMode)) != OK) {
+        ALOGE("%s: Failed to read sharedMode flag from parcel", __FUNCTION__);
+        return err;
+    }
+
     mCameraId = toStdString(id);
     mFacing = facing;
     mNewCameraState = newCameraState;
     mClientName = toStdString(clientName);
     mApiLevel = apiLevel;
     mIsNdk = isNdk;
+    mSharedMode = sharedMode;
     mLatencyMs = latencyMs;
+    mInputFormat = inputFormat;
     mLogId = logId;
     mMaxPreviewFps = maxPreviewFps;
     mSessionType = sessionType;
@@ -473,6 +523,7 @@ status_t CameraSessionStats::readFromParcel(const android::Parcel* parcel) {
     mUsedUltraWide = usedUltraWide;
     mUsedZoomOverride = usedZoomOverride;
     mSessionIndex = sessionIdx;
+    mErrorState = errorState;
     mCameraExtensionSessionStats = extStats;
     mMostRequestedFpsRange = mostRequestedFpsRange;
 
@@ -519,6 +570,11 @@ status_t CameraSessionStats::writeToParcel(android::Parcel* parcel) const {
 
     if ((err = parcel->writeInt32(mLatencyMs)) != OK) {
         ALOGE("%s: Failed to write latency in Ms!", __FUNCTION__);
+        return err;
+    }
+
+    if ((err = parcel->writeInt32(mInputFormat)) != OK) {
+        ALOGE("%s: Failed to write inputFormat!", __FUNCTION__);
         return err;
     }
 
@@ -587,6 +643,11 @@ status_t CameraSessionStats::writeToParcel(android::Parcel* parcel) const {
         return err;
     }
 
+    if ((err = parcel->writeInt32(mErrorState)) != OK) {
+        ALOGE("%s: Failed to write error state!", __FUNCTION__);
+        return err;
+    }
+
     if ((err = mCameraExtensionSessionStats.writeToParcel(parcel)) != OK) {
         ALOGE("%s: Failed to write extension sessions stats!", __FUNCTION__);
         return err;
@@ -599,6 +660,11 @@ status_t CameraSessionStats::writeToParcel(android::Parcel* parcel) const {
 
     if ((err = parcel->writeInt32(mMostRequestedFpsRange.second)) != OK) {
         ALOGE("%s: Failed to write frame rate range max info!", __FUNCTION__);
+        return err;
+    }
+
+    if ((err = parcel->writeBool(mSharedMode)) != OK) {
+        ALOGE("%s: Failed to write sharedMode flag!", __FUNCTION__);
         return err;
     }
 
