@@ -323,6 +323,7 @@ audio_flags_mask_t AAudio_computeAudioFlagsMask(
         bool isContentSpatialized,
         audio_output_flags_t outputFlags) {
     audio_flags_mask_t flagsMask = AUDIO_FLAG_NONE;
+    (void)policy;
     /*switch (policy) {
         case AAUDIO_UNSPECIFIED:
         case AAUDIO_ALLOW_CAPTURE_BY_ALL:
