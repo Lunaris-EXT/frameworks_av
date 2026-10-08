@@ -974,7 +974,7 @@ void C2SoftApvEnc::setParams(oapve_param_t& param) {
             int32_t family = mQuality->value <= 70 ? OAPV_FAMILY_422_LQ :
                         mQuality->value <= 80 ? OAPV_FAMILY_422_SQ :
                         mQuality->value <= 90 ? OAPV_FAMILY_422_HQ :
-                        OAPV_FAMILY_444_UQ;
+                        OAPV_FAMILY_444_HQ;
             int32_t familyBitrate;
             oapve_family_bitrate(family, param.w, param.h,
                         param.fps_num, param.fps_den, &familyBitrate);
